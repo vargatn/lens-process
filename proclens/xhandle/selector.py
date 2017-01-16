@@ -29,3 +29,24 @@ def getselect(pp1, pp2, limits1, limits2):
     arr1 = grid1.flatten()
     arr2 = grid2.flatten()
     return sinds, (arr1, arr2, limits1, limits2)
+
+
+def safedivide(x, y, eps=1e-8):
+    """calculates x/ y for arrays, with an attempt to handle zeros in the denominater by setting the result to zero"""
+    xabs = np.abs(x)
+    yabs = np.abs(y)
+    gind = np.where((xabs > eps) * (yabs > eps))
+
+    res = np.zeros(shape=xabs.shape)
+    res[gind] = x[gind] / y[gind]
+    return res
+
+
+def digitizedd(x, bins):
+    """D-dimenisonal digitize"""
+    if len(bins) == 1:
+        return np.digitize(x, bins)
+    pos = []
+    for i, edges in enumerate(bins):
+        pos.append(np.digitize(x[:, i], bins[i]))
+    return np.array(pos).T
