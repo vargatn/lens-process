@@ -31,7 +31,7 @@ def getselect(pp1, pp2, limits1, limits2):
     return sinds, (arr1, arr2, limits1, limits2)
 
 
-def safedivide(x, y, eps=1e-8):
+def safedivide(x, y, eps=1e-12):
     """calculates x/ y for arrays, with an attempt to handle zeros in the denominater by setting the result to zero"""
     xabs = np.abs(x)
     yabs = np.abs(y)
@@ -50,3 +50,24 @@ def digitizedd(x, bins):
     for i, edges in enumerate(bins):
         pos.append(np.digitize(x[:, i], bins[i]))
     return np.array(pos).T
+
+
+def match2d(dist1, dist2, w1=None, w2=None, nbin=30):
+    """Matches dist2 to dist1"""
+
+    tmp = np.histogram2d(dist1[:, 0], dist1[:, 1], bins=nbin, weights=w1)
+    cdist = tmp[0]
+    cedges = (tmp[1], tmp[2])
+
+    rdist = np.histogram2d(dist2[:, 0], dist2[:, 1], bins=cedges, weights=w2)[0]
+
+    digits = digitizedd(dist2, bins=cedges)
+    wratio = safedivide(cdist, rdist)
+
+    # assigning weights to individual random points
+    ww = np.zeros(len(digits))
+    for i, dig in enumerate(digits):
+        if (int(nbin + 1) not in dig) and 0 not in dig:
+            ww[i] = wratio[dig[0] - 1, dig[1] - 1]
+
+    return ww
