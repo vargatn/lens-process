@@ -3,6 +3,66 @@
 """
 
 import numpy as np
+import kmeans_radec as krd
+
+
+def partition(lst, n):
+    """Divides the list into n chunks"""
+    division = len(lst) / float(n)
+    return [lst[int(round(division * i)): int(round(division * (i + 1)))]
+            for i in range(n) ]
+
+
+def col_attach(table, colname, dtype, col):
+    """
+    A brute forece sideways stack for record arrays
+
+
+    Mostly a convinience method
+
+    :param table: Table to append sideways
+    :param colname: name of the column
+    :param dtype: dtype of the column
+    :param col: data to be added to the column
+    :return: updated table
+    """
+
+    coltypes = table.dtype.descr + [(colname, dtype)]
+    res = np.zeros(len(table), dtype=coltypes)
+    for ct in coltypes[:-1]:
+        res[ct[0]] = table[ct[0]]
+    res[colname] = col
+
+    return res
+
+
+def get_jklabel(ra, dec, centers):
+    """
+    Assigns a jk label to the points based on the passed centers
+
+    :param ra: RA
+    :param dec: DEC
+    :param centers: coordinates of centers for K-means patches
+    :return: (inds which are NOT IN patch i, inds whihc are IN patch i
+    """
+
+    pos = np.vstack((ra, dec)).T
+
+    km = krd.KMeans(centers)
+
+    labels = km.find_nearest(pos).astype(int)
+
+
+    sub_labels = np.arange(len(centers), dtype=int)
+    # sub_labels = np.unique(labels)
+
+    # indexes of clusters for subsample i
+    non_indexes = [np.where(labels != ind)[0] for ind in sub_labels]
+
+    # indexes of clusters not in subsample i
+    indexes = [np.where(labels == ind)[0] for ind in sub_labels]
+
+    return indexes, non_indexes, labels
 
 
 def getselect(pp1, pp2, limits1, limits2):
