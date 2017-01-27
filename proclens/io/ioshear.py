@@ -185,9 +185,4 @@ def xlensfit(xdata, **kwargs):
     # checking if loading made sense
     assert (info[:, 2] == np.sum(data[0, :, :], axis=1)).all()
 
-<<<<<<< HEAD
     return info, data, valnames
-=======
-    return info, data, valnames
-
->>>>>>> 5db6b30d83802c9f83497fe2f623474031d06006
