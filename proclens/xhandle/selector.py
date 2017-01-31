@@ -6,6 +6,9 @@ import numpy as np
 import kmeans_radec as krd
 
 
+def index3d(i, j, k, jmax, kmax):
+    return k  + (kmax) * j + (jmax) * kmax * i
+
 def partition(lst, n):
     """Divides the list into n chunks"""
     division = len(lst) / float(n)

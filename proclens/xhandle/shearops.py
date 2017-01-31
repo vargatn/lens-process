@@ -6,6 +6,8 @@
 import numpy as np
 import math
 
+from ..io.ioshear import xread
+
 
 def _get_nbin(data):
     """obtains number of radial bins"""
@@ -43,75 +45,35 @@ def redges(rmin, rmax, nbin):
 
 
 class StackedProfileContainer(object):
-    def __init__(self, info, data, pos, rmin, rmax, lcname, mode="sample", **kwargs):
-        """
-        Container for stacked profile
+    def __init__(self, raw_data):
+        self.raw_data = raw_data
+        self.hasclust = self._check_clust()
 
-        :param info: first part of xshear outfile
+        self.patches = self._read_raw_data()
 
-        :param data: second part of xshear outfile
+    def _check_clust(self):
+        """returns bool index for patches which have clusters in them"""
+        hasclust = np.zeros(shape=len(self.raw_data), dtype=bool)
+        for i, patch in enumerate(self.raw_data):
+            if len(patch) > 0:
+                hasclust[i] = True
+        return hasclust
 
-        :param pos: (RA, DEC) in degree
+    def _read_raw_data(self):
+        """converts the input data into a useable format"""
+        patches = []
+        for i, patch in enumerate(self.raw_data):
+            if self.hasclust[i]:
+                if len(patch.shape) == 1:
+                    res = xread(patch[np.newaxis, :])
+                else:
+                    res = xread(patch)
+                patches.append(res)
+            else:
+                patches.append(None)
+        return patches
 
-        :param nbin: number of logarithmic bins
 
-        :param rmin: innermost bin edge
-
-        :param rmax: outermost bin edge
-
-        :param lcname: lens catalog string description
-
-        :param mode: Whether to assume sample or lensfit style input
-        """
-
-
-        self.mode = mode
-
-        # input params saved
-        self.info = info
-        self.data = data
-        self.pos = pos
-        self.nbin = _get_nbin(data)
-        self.rmin = rmin
-        self.rmax = rmax
-        self.lcname = lcname
-        self.num = len(pos)
-
-        # calculating nominal bin centers, edges, areas
-        self.cens, self.edges, self.areas = redges(rmin, rmax, self.nbin)
-
-        # containers for stacking parameters
-        self.weights = None  # stacking weights
-
-        # containers for the Jackknife sampling
-        self.centers = None  # centers to be used for Jackknife (RA, DEC)
-        self.ncen = 1  # number of centers
-        self.km = None
-        self.labels = None
-        self.sub_labels = None
-        self.subcounts = None
-        self.indexes = None
-        self.non_indexes = None
-        self.hasval = None
-        self.wdata = None
-
-        self.dsx_sub = None
-        self.dst_sub = None
-
-        # containers for the resulting profile
-        self.w = np.ones(self.num)
-        self.rr = np.ones(self.nbin) * -1.0
-        self.dst0 = np.zeros(self.nbin)
-        self.dsx0 = np.zeros(self.nbin)
-        self.dst = np.zeros(self.nbin)
-        self.dsx = np.zeros(self.nbin)
-        self.dst_cov = np.zeros((self.nbin, self.nbin))
-        self.dst_err = np.zeros(self.nbin)
-        self.dsx_cov = np.zeros((self.nbin, self.nbin))
-        self.dsx_err = np.zeros(self.nbin)
-
-        self.neff = 0  # number of entries with sources in any bin
-        self.hasprofile = False
 
 
 

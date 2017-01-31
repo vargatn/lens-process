@@ -118,7 +118,6 @@ def xread(xdata, **kwargs):
 
     # calculates number of radial bins used
     bins = (xdata.shape[1] - 3) // 10
-    print bins
 
     # position indexes
     sid = 3
