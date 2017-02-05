@@ -29,8 +29,10 @@ def xpatches(raw_patches):
         if len(patch) > 0:
             if len(patch.shape) == 1:
                 info, data, tmp = xread(patch[np.newaxis, :])
+                # info, data, tmp = xsample(patch[np.newaxis, :])
             else:
                 info, data, tmp = xread(patch)
+                # info, data, tmp = xsample(patch)
             infos.append(info)
             datas.append(data)
             labels.append(np.ones(info.shape[0]) * i)
@@ -38,6 +40,7 @@ def xpatches(raw_patches):
     datas = np.concatenate(datas, axis=1)
     labels = np.concatenate(labels)
     return infos, datas, labels
+
 
 def xread(xdata, **kwargs):
     """Loader for xshear output"""
@@ -48,8 +51,9 @@ def xread(xdata, **kwargs):
     }
 
     # calculates number of radial bins used
+    print xdata.shape
     bins = (xdata.shape[1] - 3) // 10
-
+    print bins
     # position indexes
     sid = 3
     pos_npair = 0
@@ -84,9 +88,11 @@ def xread(xdata, **kwargs):
     data = np.transpose(data, axes=(2, 0, 1))
 
     # checking if loading made sense
-    assert (info[:, 2] == np.sum(data[0, :, :], axis=1)).all()
+    # print info[:, 2], np.sum(data[0, :, :], axis=1)
+    # assert (info[:, 2] == np.sum(data[0, :, :], axis=1)).all()
 
     return info, data, valnames
+
 
 
 
