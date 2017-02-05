@@ -316,6 +316,7 @@ class StackedProfileContainer(object):
 
         tmp_dst_sub = np.zeros(shape=(self.nbin, self.ncen))
         tmp_dsx_sub = np.zeros(shape=(self.nbin, self.ncen))
+        tmp_snum_sub = np.zeros(shape=(self.nbin, self.ncen))
 
         tmp_sub_labels = np.array(
             list(set(self.sub_labels).intersection(set(other.sub_labels))))
@@ -341,19 +342,39 @@ class StackedProfileContainer(object):
                                              other.dst_sub[r, subind]
                     tmp_dsx_sub[r, subind] = self.dsx_sub[r, subind] - \
                                              other.dsx_sub[r, subind]
+                    tmp_snum_sub[r, subind] = self.snum_sub[r, subind] - \
+                                             other.snum_sub[r, subind]
                 elif operation == "+":
                     tmp_dst_sub[r, subind] = self.dst_sub[r, subind] + \
                                              other.dst_sub[r, subind]
                     tmp_dsx_sub[r, subind] = self.dsx_sub[r, subind] + \
                                              other.dsx_sub[r, subind]
+                    tmp_snum_sub[r, subind] = self.snum_sub[r, subind] + \
+                                             other.snum_sub[r, subind]
+                elif operation == "*":
+                    tmp_dst_sub[r, subind] = self.dst_sub[r, subind] * \
+                                             other.dst_sub[r, subind]
+                    tmp_dsx_sub[r, subind] = self.dsx_sub[r, subind] * \
+                                             other.dsx_sub[r, subind]
+                    tmp_snum_sub[r, subind] = self.snum_sub[r, subind] * \
+                                             other.snum_sub[r, subind]
+                elif operation == "/":
+                    tmp_dst_sub[r, subind] = self.dst_sub[r, subind] / \
+                                             other.dst_sub[r, subind]
+                    tmp_dsx_sub[r, subind] = self.dsx_sub[r, subind] / \
+                                             other.dsx_sub[r, subind]
+                    tmp_snum_sub[r, subind] = self.snum_sub[r, subind] / \
+                                             other.snum_sub[r, subind]
+
                 else:
-                    raise ValueError("Operation not supported, use '+' or '-'")
+                    raise ValueError("Operation not supported, use ('+', '-', '*', '/')")
 
         # assigning updated containers
         self.sub_labels = tmp_sub_labels
         self.subcounts = tmp_subcounts
         self.dst_sub = tmp_dst_sub
         self.dsx_sub = tmp_dsx_sub
+        self.snum_sub = tmp_snum_sub
 
 
     def multiply(self, val):
@@ -403,9 +424,9 @@ class StackedProfileContainer(object):
         assert self.hasprofile and other.hasprofile
 
         # making sure that the two profiles use the same centers
-        err_msg = 'JK centers do not agree within 1e-5'
-        np.testing.assert_allclose(self.centers, other.centers,
-                                   rtol=1e-5, err_msg=err_msg)
+        # err_msg = 'JK centers do not agree within 1e-5'
+        # np.testing.assert_allclose(self.centers, other.centers,
+        #                            rtol=1e-5, err_msg=err_msg)
         assert self.dst_sub.shape == other.dst_sub.shape
 
         # clears the profile container
