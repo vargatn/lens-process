@@ -75,6 +75,8 @@ class StackedProfileContainer(object):
         self.dst_denom = 6
         self.dsx_denom = 7
 
+        self.snum_ind = 2
+
         # input params saved
         self.info = info
         self.data = data
@@ -98,6 +100,7 @@ class StackedProfileContainer(object):
 
         self.dsx_sub = None
         self.dst_sub = None
+        self.snum_sub = None
 
         # containers for the resulting profile
         self.w = np.ones(self.num)
@@ -110,6 +113,12 @@ class StackedProfileContainer(object):
         self.dst_err = np.zeros(self.nbin)
         self.dsx_cov = np.zeros((self.nbin, self.nbin))
         self.dsx_err = np.zeros(self.nbin)
+
+        # containers for the source number profile
+        self.snum = np.zeros(self.nbin)
+        self.snum0 = np.zeros(self.nbin)
+        self.snum_err = np.zeros(self.nbin)
+        self.snum_cov = np.zeros((self.nbin, self.nbin))
 
         self.neff = 0  # number of entries with sources in any bin
         self.hasprofile = False
@@ -150,6 +159,7 @@ class StackedProfileContainer(object):
 
         self.dsx_sub = np.zeros(shape=(self.nbin, self.ncen))
         self.dst_sub = np.zeros(shape=(self.nbin, self.ncen))
+        self.snum_sub = np.zeros(shape=(self.nbin, self.ncen))
 
     def _get_rr(self):
         """calculating radial values for data points"""
@@ -179,6 +189,8 @@ class StackedProfileContainer(object):
         osum_w_jack = np.average(self.data[self.dsx_denom, :, nzind], axis=1,
                                  weights=self.w)
         self.dsx0[nzind] = osum_jack / osum_w_jack
+
+        self.snum0[nzind] = np.average(self.data[self.snum_ind, :, nzind], axis=1, weights=self.w)
     #
     # THIS takes a lot of resources
     def _subprofiles(self):
@@ -208,6 +220,9 @@ class StackedProfileContainer(object):
                                  self.w[ind, np.newaxis], axis=0) / wsum
             self.dsx_sub[cind, lab] = osum_jack / osum_w_jack
 
+            self.snum_sub[cind, lab] = np.sum(self.data[self.snum_ind, ind][:, cind] *
+                                              self.w[ind, np.newaxis], axis=0) / wsum
+
     def _profcalc(self):
         """JK estimate on the mean profile"""
         for r in range(self.nbin):
@@ -219,6 +234,7 @@ class StackedProfileContainer(object):
             if njk > 1:
                 self.dst[r] = np.sum(self.dst_sub[r, subind]) / njk
                 self.dsx[r] = np.sum(self.dsx_sub[r, subind]) / njk
+                self.snum[r] = np.sum(self.snum_sub[r, subind]) / njk
             else:
                 self.rr[r] = BADVAL
 
@@ -247,10 +263,18 @@ class StackedProfileContainer(object):
                                                   (self.dsx_sub[r2, subind] -
                                                    self.dsx[r2])) * \
                                            (njk - 1.0) / njk
+
+                    self.snum_cov[r1, r2] = np.sum((self.snum_sub[r1, subind] -
+                                                   self.snum[r1]) *
+                                                  (self.snum_sub[r2, subind] -
+                                                   self.snum[r2])) * \
+                                           (njk - 1.0) / njk
                 elif r1 == r2:
                     self.rr[r1] = BADVAL
+
         self.dst_err = np.sqrt(np.diag(self.dst_cov))
         self.dsx_err = np.sqrt(np.diag(self.dsx_cov))
+        self.snum_err = np.sqrt(np.diag(self.snum_cov))
 
     def prof_maker(self, weights=None):
         """
@@ -396,7 +420,6 @@ class StackedProfileContainer(object):
         self._covcalc()
 
         self.hasprofile = True
-
 
 
 def stacked_pcov(plist):
