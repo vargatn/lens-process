@@ -51,9 +51,9 @@ def xread(xdata, **kwargs):
     }
 
     # calculates number of radial bins used
-    print xdata.shape
+    # print xdata.shape
     bins = (xdata.shape[1] - 3) // 10
-    print bins
+    # print bins
     # position indexes
     sid = 3
     pos_npair = 0
@@ -89,7 +89,7 @@ def xread(xdata, **kwargs):
 
     # checking if loading made sense
     # print info[:, 2], np.sum(data[0, :, :], axis=1)
-    # assert (info[:, 2] == np.sum(data[0, :, :], axis=1)).all()
+    assert (info[:, 2] == np.sum(data[0, :, :], axis=1)).all()
 
     return info, data, valnames
 
