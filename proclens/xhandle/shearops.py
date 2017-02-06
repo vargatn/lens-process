@@ -222,6 +222,8 @@ class StackedProfileContainer(object):
 
             self.snum_sub[cind, lab] = np.sum(self.data[self.snum_ind, ind][:, cind] *
                                               self.w[ind, np.newaxis], axis=0) / wsum
+            self.snum_sub[:, lab] /= np.sum(self.snum_sub[:, lab])
+
 
     def _profcalc(self):
         """JK estimate on the mean profile"""
