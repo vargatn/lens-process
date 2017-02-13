@@ -115,22 +115,24 @@ def digitizedd(x, bins):
     return np.array(pos).T
 
 
-def match2d(dist1, dist2, w1=None, w2=None, nbin=30):
+def match2d(pars, refpars, win=None, wref=None, nbin=30):
     """Matches dist2 to dist1"""
+    refhist = np.histogram2d(refpars[:, 0], refpars[:, 1], bins=nbin, weights=wref)
+    refcounts = refhist[0]
+    bin_edges = (refhist[1], refhist[2])
 
-    tmp = np.histogram2d(dist1[:, 0], dist1[:, 1], bins=nbin, weights=w1)
-    cdist = tmp[0]
-    cedges = (tmp[1], tmp[2])
+    parcounts = np.histogram2d(pars[:, 0], pars[:, 1], bins=bin_edges, weights=win)[0]
+    # relative weight for matching
+    wratio = safedivide(refcounts, parcounts)
 
-    rdist = np.histogram2d(dist2[:, 0], dist2[:, 1], bins=cedges, weights=w2)[0]
-
-    digits = digitizedd(dist2, bins=cedges)
-    wratio = safedivide(cdist, rdist)
+    digits = np.vstack((np.digitize(pars[:, 0], bins=bin_edges[0]),
+                        np.digitize(pars[:, 1], bins=bin_edges[1]))).T
 
     # assigning weights to individual random points
-    ww = np.zeros(len(digits))
+    ww = np.zeros(len(pars))
     for i, dig in enumerate(digits):
-        if (int(nbin + 1) not in dig) and 0 not in dig:
+        if dig[0] != 0 and dig[1] != 0 and dig[0] != len(bin_edges[0]) and dig[1] != len(bin_edges[1]):
             ww[i] = wratio[dig[0] - 1, dig[1] - 1]
-
+            if win is not None:
+                ww[i] *= win[i]
     return ww
