@@ -2,7 +2,7 @@
 
 """
 
-
+import kmeans_radec as krd
 import numpy as np
 import math
 
@@ -43,6 +43,24 @@ def redges(rmin, rmax, nbin):
                       for i, val in enumerate(edges[:-1])])
 
     return cens, edges, areas
+
+
+def get_labels(pos, centers, verbose=False):
+    """Assigns"""
+    if not np.iterable(centers):  # if centers is a number
+        ncen = centers
+        nsample = pos.shape[0] // 2
+        km = krd.kmeans_sample(pos, ncen=ncen,
+                                    nsample=nsample, verbose=verbose)
+        if not km.converged:
+            km.run(pos, maxiter=100)
+        # centers = km.centers
+    else:  # if centers is an array of RA, DEC pairs
+        assert len(centers.shape) == 2  # shape should be (:, 2)
+        km = krd.KMeans(centers)
+
+    labels = km.find_nearest(pos).astype(int)
+    return labels
 
 
 class StackedProfileContainer(object):
