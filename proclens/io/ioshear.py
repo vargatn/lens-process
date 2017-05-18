@@ -47,12 +47,12 @@ def xread(xdata, **kwargs):
     valnames = {
         "info": ("index", "weight_tot", "totpairs"),
         "data": ("npair_i", "rsum_i", "wsum_i", "ssum_i", "dsum_i", "osum_i", "dsensum_w_i", "osensum_w_i",
-                 "dsensum_s_i", "osensum_s_i"),
+                 "dsensum_s_i", "osensum_s_i", "mean_e1", "mean_e2"),
     }
 
     # calculates number of radial bins used
     # print xdata.shape
-    bins = (xdata.shape[1] - 3) // 10
+    bins = (xdata.shape[1] - 3) // 12
     # print bins
     # position indexes
     sid = 3
@@ -66,6 +66,8 @@ def xread(xdata, **kwargs):
     pos_osensum_w = 7
     pos_dsensum_s = 8
     pos_osensum_s = 9
+    pos_me1 = 10 # mean e1 shear component
+    pos_me2 = 11 # mean e2 shear component
 
     gid = xdata[:, 0]
     weight_tot = xdata[:, 1]
@@ -81,10 +83,12 @@ def xread(xdata, **kwargs):
     osensum_w = xdata[:, sid + pos_osensum_w * bins: sid + (pos_osensum_w + 1) * bins]
     dsensum_s = xdata[:, sid + pos_dsensum_s * bins: sid + (pos_dsensum_s + 1) * bins]
     osensum_s = xdata[:, sid + pos_osensum_s * bins: sid + (pos_osensum_s + 1) * bins]
-
+    me1 = xdata[:, sid + pos_me1 * bins: sid + (pos_me1 + 1) * bins]
+    me2 = xdata[:, sid + pos_me2 * bins: sid + (pos_me2 + 1) * bins]
 
     info = np.vstack((gid, weight_tot, tot_pairs)).T
-    data = np.dstack((npair, rsum, wsum, ssum, dsum, osum, dsensum_w, osensum_w, dsensum_s, osensum_s))
+    data = np.dstack((npair, rsum, wsum, ssum, dsum, osum,
+                      dsensum_w, osensum_w, dsensum_s, osensum_s, me1, me2))
     data = np.transpose(data, axes=(2, 0, 1))
 
     # checking if loading made sense
