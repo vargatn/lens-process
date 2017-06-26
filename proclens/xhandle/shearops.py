@@ -64,29 +64,7 @@ def get_labels(pos, centers, verbose=False):
 
 
 class StackedProfileContainer(object):
-    def __init__(self, info, data, labels, ncen, lcname=None, **kwargs):
-        """
-        Container for Stacked profile
-
-        NOTE: the calculation right now is quite slow, the bottleneck seems to
-        be in the repeated indexing -- slicing of arrays in the _subprofiles
-        function!!!
-
-        :param info: first part of xshear outfile
-
-        :param data: second part of xshear outfile
-
-        :param pos: (RA, DEC) in degree
-
-        :param nbin: number of logarithmic bins
-
-        :param rmin: innermost bin edge
-
-        :param rmax: outermost bin edge
-
-        :param lcname: lens catalog string description
-        """
-
+    def __init__(self, info, data, labels, ncen, lcname=None, metadata=None, metatags=None, **kwargs):
         # indices to be used in the shear stacking
         self.dst_nom = 4
         self.dsx_nom = 5
@@ -101,6 +79,11 @@ class StackedProfileContainer(object):
         self.nbin = _get_nbin(data)
         self.lcname = lcname
         self.num = len(info)
+
+        # Data needed for metacalibration corrections
+        self.metadata = metadata
+        self.metatags = metatags
+        self.ismeta = self.metadata is not None and self.metatags is not None
 
         self.labels = labels
         self.ncen = ncen  # number of centers
@@ -141,12 +124,6 @@ class StackedProfileContainer(object):
         self.neff = 0  # number of entries with sources in any bin
         self.hasprofile = False
 
-    def set_cols(self, dst_nom, dsx_nom, dst_denom, dsx_denom):
-        self.dst_nom = dst_nom
-        self.dsx_nom = dsx_nom
-        self.dst_denom = dst_denom
-        self.dsx_denom = dsx_denom
-
     def _reset_profile(self):
         """Resets the profile container"""
         self.w = np.ones(self.num)
@@ -182,6 +159,9 @@ class StackedProfileContainer(object):
     def _get_rr(self):
         """calculating radial values for data points"""
         nzind = np.where(np.sum(self.data[0, :, :], axis=0) > 0)[0]
+        # print nzind
+        # print self.data[1, :, nzind].shape
+        # print self.w.shape
         self.rr[nzind] = np.sum(self.data[1, :, nzind] * self.w, axis=1) / \
                          np.sum(self.data[2, :, nzind] * self.w, axis=1)
 
@@ -189,34 +169,35 @@ class StackedProfileContainer(object):
         """calculates effective number of entries (lenses)"""
         return len(np.nonzero(self.info[:, 2])[0])
 
-    def _nullprofiles(self):
-        """Calculates reference profile from all entries"""
-        # checking for radial bins with zero source count (in total)
-        nzind = np.where(np.sum(self.data[0, :, :], axis=0) > 0)[0]
+    def _get_sel_response(self):
+        pass
 
-        # calculating radial values for data points
-        self.rr[nzind] = np.sum(self.data[1, :, nzind], axis=1) / \
-                         np.sum(self.data[2, :, nzind], axis=1)
+    def _get_single_subcounts(self, data):
 
-        dsum_jack = np.average(self.data[self.dst_nom, :, nzind], axis=1, weights=self.w)
-        dsum_w_jack = np.average(self.data[self.dst_denom, :, nzind], axis=1,
-                                 weights=self.w)
-        self.dst0[nzind] = dsum_jack / dsum_w_jack
 
-        osum_jack = np.average(self.data[self.dsx_nom, :, nzind], axis=1, weights=self.w)
-        osum_w_jack = np.average(self.data[self.dsx_denom, :, nzind], axis=1,
-                                 weights=self.w)
-        self.dsx0[nzind] = osum_jack / osum_w_jack
+        subcounts = np.array([np.sum(data[0, ind, :], axis=0)
+                              for ind in self.indexes]).astype(int)
+        return subcounts
 
-        self.snum0[nzind] = np.average(self.data[self.snum_ind, :, nzind], axis=1, weights=self.w)
-    #
-    # THIS takes a lot of resources
+    def _get_subcounts(self):
+        tmp_subcounts = []
+
+        # processing main data
+        subcount = self._get_single_subcounts(self.data)
+        tmp_subcounts.append(subcount)
+
+        if self.ismeta:
+            for i, tag in enumerate(self.metatags):
+                subcount = self._get_single_subcounts(self.metadata[i])
+                tmp_subcounts.append(subcount)
+        tmp_subcounts = np.dstack(tmp_subcounts)
+        subcounts = np.min(tmp_subcounts, axis=2)
+        return subcounts
+
     def _subprofiles(self):
         """Calculates subprofiles for each patch"""
 
-        self.subcounts = np.array([np.sum(self.data[0, ind, :], axis=0)
-                                   for ind in self.indexes]).astype(int)
-
+        self.subcounts = self._get_subcounts()
         hasval = [np.nonzero(arr.astype(bool))[0] for arr in self.subcounts]
 
         # calculating jackknife subprofiles
@@ -224,50 +205,61 @@ class StackedProfileContainer(object):
             ind = self.indexes[i]
             cind = hasval[i]
 
+            ww = self.w[ind, np.newaxis]
             wsum = np.sum(self.w[ind])
 
-            dsum_jack = np.sum(self.data[self.dst_nom, ind][:, cind] *
-                               self.w[ind, np.newaxis], axis=0) / wsum
-            dsum_w_jack = np.sum(self.data[self.dst_denom, ind][:, cind] *
-                                 self.w[ind, np.newaxis], axis=0) / wsum
-            self.dst_sub[cind, lab] = dsum_jack / dsum_w_jack
+            Rs = np.zeros(len(cind))
+            if self.ismeta:
+                val1parr = (np.sum(self.metadata[0][10, ind][:, cind] * ww, axis=0) /
+                            np.sum(self.metadata[0][3, ind][:, cind] * ww, axis=0))
+                val1marr = (np.sum(self.metadata[1][10, ind][:, cind] * ww, axis=0) /
+                            np.sum(self.metadata[1][3, ind][:, cind] * ww, axis=0))
+                R11 = (val1parr - val1marr) / 0.02
 
-            osum_jack = np.sum(self.data[self.dsx_nom, ind][:, cind] *
-                               self.w[ind, np.newaxis], axis=0) / wsum
-            osum_w_jack = np.sum(self.data[self.dsx_denom, ind][:, cind] *
-                                 self.w[ind, np.newaxis], axis=0) / wsum
-            self.dsx_sub[cind, lab] = osum_jack / osum_w_jack
+                val2parr = (np.sum(self.metadata[2][11, ind][:, cind] * ww, axis=0) /
+                            np.sum(self.metadata[2][3, ind][:, cind] * ww, axis=0))
+                val2marr = (np.sum(self.metadata[3][11, ind][:, cind] * ww, axis=0) /
+                            np.sum(self.metadata[3][3, ind][:, cind] * ww, axis=0))
+                R22 = (val2parr - val2marr) / 0.02
+                Rs = 0.5 * (R11 + R22) * np.sum(self.data[2, ind][:, cind] * ww, axis=0)
 
-            self.snum_sub[cind, lab] = np.sum(self.data[self.snum_ind, ind][:, cind] *
-                                              self.w[ind, np.newaxis], axis=0) / wsum
+            dsum_jack = np.sum(self.data[self.dst_nom, ind][:, cind] * ww, axis=0)
+            dsum_w_jack = np.sum(self.data[self.dst_denom, ind][:, cind] * ww, axis=0)
+            self.dst_sub[cind, lab] = dsum_jack / (dsum_w_jack + Rs)
+
+            osum_jack = np.sum(self.data[self.dsx_nom, ind][:, cind] * ww, axis=0)
+            osum_w_jack = np.sum(self.data[self.dsx_denom, ind][:, cind] * ww, axis=0)
+            self.dsx_sub[cind, lab] = osum_jack / (osum_w_jack + Rs)
+
+            self.snum_sub[cind, lab] = np.sum(self.data[self.snum_ind, ind][:, cind] * ww, axis=0) / wsum
             self.snum_sub[:, lab] /= np.sum(self.snum_sub[:, lab])
-
 
     def _profcalc(self):
         """JK estimate on the mean profile"""
+
+        tmp_rr = self.rr
+        self.rr = np.ones(len(self.rr)) * BADVAL
+
         for r in range(self.nbin):
-            # checking for radial bins with 0 pair count (to avoid NaNs)
-            subind = self.sub_labels[np.where(self.subcounts[:, r] > 0)[0]]
-            if np.max(self.subcounts[:, r]) == 1:
-                self.rr[r] = BADVAL
+            # checking for radial bins with 1 pair count (to avoid NaNs)
+            subind = self.sub_labels[np.where(self.subcounts[:, r] > 1)[0]]
             njk = len(subind)
             if njk > 1:
                 self.dst[r] = np.sum(self.dst_sub[r, subind]) / njk
                 self.dsx[r] = np.sum(self.dsx_sub[r, subind]) / njk
                 self.snum[r] = np.sum(self.snum_sub[r, subind]) / njk
-            else:
-                self.rr[r] = BADVAL
+                self.rr[r] = tmp_rr[r]
 
     def _covcalc(self):
         """JK estimate on the covariance matrix"""
         # calculating the covariance
         for r1 in range(self.nbin):
             for r2 in range(self.nbin):
-                # getting patches where there are elements in both indices
+                # getting patches where there are multiple elements in both indices
                 subind1 = self.sub_labels[np.where(
-                    self.subcounts[:, r1] > 0)[0]]
+                    self.subcounts[:, r1] > 1)[0]]
                 subind2 = self.sub_labels[np.where(
-                    self.subcounts[:, r2] > 0)[0]]
+                    self.subcounts[:, r2] > 1)[0]]
                 # overlapping indices
                 subind = list(set(subind1).intersection(set(subind2)))
                 njk = len(subind)
@@ -289,8 +281,6 @@ class StackedProfileContainer(object):
                                                   (self.snum_sub[r2, subind] -
                                                    self.snum[r2])) * \
                                            (njk - 1.0) / njk
-                elif r1 == r2:
-                    self.rr[r1] = BADVAL
 
         self.dst_err = np.sqrt(np.diag(self.dst_cov))
         self.dsx_err = np.sqrt(np.diag(self.dsx_cov))
@@ -308,8 +298,10 @@ class StackedProfileContainer(object):
         # adding weights
         if weights is None:
             weights = np.ones(self.num)
-        self.w = weights
 
+        # print weights.shape
+        self.w = weights
+        # print self.w.shape
         # preparing the JK patches
         self.setup_subpatches()
 
@@ -498,8 +490,8 @@ def stacked_pcov(plist):
             r2 = i2 % rlen
 
             # calculating subpatches with data
-            subind1 = pc1.sub_labels[np.nonzero(pc1.subcounts[:, r1])[0]]
-            subind2 = pc2.sub_labels[np.nonzero(pc2.subcounts[:, r2])[0]]
+            subind1 = pc1.sub_labels[np.where(pc1.subcounts[:, r1] > 1)[0]]
+            subind2 = pc2.sub_labels[np.where(pc2.subcounts[:, r2] > 1)[0]]
             subind = list(set(subind1).intersection(set(subind2)))
             njk = len(subind)  # number of subpatches used
             if njk > 1:
@@ -510,9 +502,7 @@ def stacked_pcov(plist):
                 part1_x = (pc1.dsx_sub[r1, subind] - pc1.dsx[r1])
                 part2_x = (pc2.dsx_sub[r2, subind] - pc2.dsx[r2])
 
-                supercov_t[i1, i2] = np.sum(part1_t * part2_t) *\
-                                     (njk - 1.) / njk
-                supercov_x[i1, i2] = np.sum(part1_x * part2_x) *\
-                                     (njk - 1.) / njk
+                supercov_t[i1, i2] = np.sum(part1_t * part2_t) * (njk - 1.) / njk
+                supercov_x[i1, i2] = np.sum(part1_x * part2_x) * (njk - 1.) / njk
 
     return supercov_t, supercov_x

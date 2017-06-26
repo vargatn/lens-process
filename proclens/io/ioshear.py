@@ -54,6 +54,7 @@ def xread(xdata, **kwargs):
     # print xdata.shape
     bins = (xdata.shape[1] - 3) // 12
     # print bins
+
     # position indexes
     sid = 3
     pos_npair = 0
@@ -93,6 +94,8 @@ def xread(xdata, **kwargs):
 
     # checking if loading made sense
     # print info[:, 2], np.sum(data[0, :, :], axis=1)
+    # print info[:, 2]
+    # print np.sum(data[0, :, :], axis=1)
     assert (info[:, 2] == np.sum(data[0, :, :], axis=1)).all()
 
     return info, data, valnames
