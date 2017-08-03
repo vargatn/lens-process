@@ -76,9 +76,15 @@ class StackedProfileContainer(object):
         # input params saved
         self.info = info
         self.data = data
-        self.nbin = _get_nbin(data)
         self.lcname = lcname
-        self.num = len(info)
+
+        self.nbin = 1
+        if self.data is not None:
+            self.nbin = _get_nbin(data)
+
+        self.num = 1
+        if self.info is not None:
+            self.num = len(info)
 
         # Data needed for metacalibration corrections
         self.metadata = metadata
@@ -123,6 +129,56 @@ class StackedProfileContainer(object):
 
         self.neff = 0  # number of entries with sources in any bin
         self.hasprofile = False
+        self.hasdata = True
+
+    @classmethod
+    def from_sub_dict(cls, sub_dict):
+        spc = cls(None, None, None, sub_dict["ncen"], lcname=sub_dict["lcname"])
+        for key in sub_dict:
+            setattr(spc, key, sub_dict[key])
+        spc.hasdata = False
+        return spc
+
+    def to_sub_dict(self):
+        # TODO this with self.__dict__, though current way is more explicit...
+        infodict = {
+            "lcname": self.lcname,
+            "nbin": self.nbin,
+            "num": self.num,
+            "ismeta": self.ismeta,
+            "ncen": self.ncen,
+            "sub_labels": self.sub_labels,
+            "subcounts": self.subcounts,
+            "indexes": self.indexes,
+            "non_indexes": self.non_indexes,
+            "hasval": self.hasval,
+            "wdata": self.wdata,
+            "dsx_sub": self.dsx_sub,
+            "dst_sub": self.dst_sub,
+            "snum_sub": self.snum_sub,
+            "rr": self.rr,
+            "dst0": self.dst0,
+            "dsx0": self.dsx0,
+            "dst": self.dst,
+            "dsx": self.dsx,
+            "dst_cov": self.dst_cov,
+            "dst_err": self.dst_err,
+            "dsx_cov": self.dsx_cov,
+            "dsx_err": self.dsx_err,
+            "snum": self.snum,
+            "snum0": self.snum0,
+            "snum_err": self.snum_err,
+            "snum_cov": self.snum_cov,
+            "neff": self.neff,
+            "hasprofile": self.hasprofile,
+        }
+        return infodict
+
+    def drop_data(self):
+        self.info = None
+        self.data = None
+        self.labels = None
+        self.hasdata = False
 
     def _reset_profile(self):
         """Resets the profile container"""
