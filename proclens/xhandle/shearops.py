@@ -60,7 +60,7 @@ def get_labels(pos, centers, verbose=False):
         km = krd.KMeans(centers)
 
     labels = km.find_nearest(pos).astype(int)
-    return labels
+    return labels, km.centers
 
 
 class StackedProfileContainer(object):
@@ -258,6 +258,7 @@ class StackedProfileContainer(object):
 
         # calculating jackknife subprofiles
         for i, lab in enumerate(self.sub_labels):
+            print i, lab
             ind = self.indexes[i]
             cind = hasval[i]
 
