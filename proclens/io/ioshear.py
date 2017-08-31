@@ -26,7 +26,7 @@ def xpatches(raw_patches):
     datas = []
     labels = []
     for i, patch in enumerate(raw_patches):
-        print i
+        # print i
         if len(patch) > 0:
             if len(patch.shape) == 1:
                 info, data, tmp = xread(patch[np.newaxis, :])
