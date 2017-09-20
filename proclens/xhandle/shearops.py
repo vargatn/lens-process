@@ -174,16 +174,17 @@ class StackedProfileContainer(object):
         }
         return infodict
 
-    def drop_data(self):
+    def drop_data(self, keep_rr=True):
         self.info = None
         self.data = None
         self.labels = None
         self.hasdata = False
 
-    def _reset_profile(self):
+    def _reset_profile(self, keep_rr=True):
         """Resets the profile container"""
         self.w = np.ones(self.num)
-        self.rr = np.ones(self.nbin) * -1.0
+        if not keep_rr:
+            self.rr = np.ones(self.nbin) * -1.0
         self.dst0 = np.zeros(self.nbin)
         self.dsx0 = np.zeros(self.nbin)
         self.dst = np.zeros(self.nbin)
@@ -446,7 +447,7 @@ class StackedProfileContainer(object):
         self.snum_sub = tmp_snum_sub
 
 
-    def multiply(self, val):
+    def multiply(self, val, keep_rr=True):
         """
         Calculate the JK estimate on profile times the specified "val"
 
@@ -457,10 +458,11 @@ class StackedProfileContainer(object):
         """
 
         # clears the profile container
-        self._reset_profile()
+        self._reset_profile(keep_rr=keep_rr)
 
-        # getting radius values
-        self._get_rr()
+        if not keep_rr:
+            # getting radius values
+            self._get_rr()
 
         # performs the multiplication
         self.dst_sub *= val
@@ -472,7 +474,7 @@ class StackedProfileContainer(object):
         self.hasprofile = True
 
 
-    def composite(self, other, operation="-"):
+    def composite(self, other, operation="-", keep_rr=True):
         """
         Calculate the JK estimate on the operation applied to the two profiles
 
@@ -499,10 +501,11 @@ class StackedProfileContainer(object):
         assert self.dst_sub.shape == other.dst_sub.shape
 
         # clears the profile container
-        self._reset_profile()
+        self._reset_profile(keep_rr=keep_rr)
 
-        # getting radius values
-        self._get_rr()
+        if not keep_rr:
+            # getting radius values
+            self._get_rr()
 
         # updates subprofiles
         self._composite_subprofiles(other=other, operation=operation)
