@@ -525,7 +525,7 @@ def stacked_pcov(plist):
     """
     # checking that input is of correct format
     assert np.iterable(plist)
-    assert isinstance(plist[0], StackedProfileContainer)
+    # assert isinstance(plist[0], StackedProfileContainer)
 
     # data vectors for covariance
     dtvec = np.array([pc.dst for pc in plist]).flatten()
