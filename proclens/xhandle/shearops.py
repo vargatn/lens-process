@@ -71,6 +71,10 @@ class StackedProfileContainer(object):
         self.dst_denom = 6
         self.dsx_denom = 7
 
+        self.e1_nom = 10
+        self.e2_nom = 11
+        self.meta_denom = 3
+
         self.snum_ind = 2
 
         # input params saved
@@ -268,16 +272,16 @@ class StackedProfileContainer(object):
 
             Rs = np.zeros(len(cind))
             if self.ismeta:
-                val1parr = (np.sum(self.metadata[0][10, ind][:, cind] * ww, axis=0) /
-                            np.sum(self.metadata[0][3, ind][:, cind] * ww, axis=0))
-                val1marr = (np.sum(self.metadata[1][10, ind][:, cind] * ww, axis=0) /
-                            np.sum(self.metadata[1][3, ind][:, cind] * ww, axis=0))
+                val1parr = (np.sum(self.metadata[0][self.e1_nom, ind][:, cind] * ww, axis=0) /
+                            np.sum(self.metadata[0][self.meta_denom, ind][:, cind] * ww, axis=0))
+                val1marr = (np.sum(self.metadata[1][self.e1_nom, ind][:, cind] * ww, axis=0) /
+                            np.sum(self.metadata[1][self.meta_denom, ind][:, cind] * ww, axis=0))
                 R11 = (val1parr - val1marr) / 0.02
 
-                val2parr = (np.sum(self.metadata[2][11, ind][:, cind] * ww, axis=0) /
-                            np.sum(self.metadata[2][3, ind][:, cind] * ww, axis=0))
-                val2marr = (np.sum(self.metadata[3][11, ind][:, cind] * ww, axis=0) /
-                            np.sum(self.metadata[3][3, ind][:, cind] * ww, axis=0))
+                val2parr = (np.sum(self.metadata[2][self.e2_nom, ind][:, cind] * ww, axis=0) /
+                            np.sum(self.metadata[2][self.meta_denom, ind][:, cind] * ww, axis=0))
+                val2marr = (np.sum(self.metadata[3][self.e2_nom, ind][:, cind] * ww, axis=0) /
+                            np.sum(self.metadata[3][self.meta_denom, ind][:, cind] * ww, axis=0))
                 R22 = (val2parr - val2marr) / 0.02
                 Rs = 0.5 * (R11 + R22) * np.sum(self.data[2, ind][:, cind] * ww, axis=0)
 
