@@ -74,6 +74,7 @@ class StackedProfileContainer(object):
         self.e1_nom = 10
         self.e2_nom = 11
         self.meta_denom = 3
+        self.meta_prefac = 2
 
         self.snum_ind = 2
 
@@ -283,7 +284,7 @@ class StackedProfileContainer(object):
                 val2marr = (np.sum(self.metadata[3][self.e2_nom, ind][:, cind] * ww, axis=0) /
                             np.sum(self.metadata[3][self.meta_denom, ind][:, cind] * ww, axis=0))
                 R22 = (val2parr - val2marr) / 0.02
-                Rs = 0.5 * (R11 + R22) * np.sum(self.data[2, ind][:, cind] * ww, axis=0)
+                Rs = 0.5 * (R11 + R22) * np.sum(self.data[self.meta_prefac, ind][:, cind] * ww, axis=0)
 
             dsum_jack = np.sum(self.data[self.dst_nom, ind][:, cind] * ww, axis=0)
             dsum_w_jack = np.sum(self.data[self.dst_denom, ind][:, cind] * ww, axis=0)
