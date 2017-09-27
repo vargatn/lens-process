@@ -221,9 +221,7 @@ class StackedProfileContainer(object):
     def _get_rr(self):
         """calculating radial values for data points"""
         nzind = np.where(np.sum(self.data[0, :, :], axis=0) > 0)[0]
-        # print nzind
-        # print self.data[1, :, nzind].shape
-        # print self.w.shape
+
         self.rr[nzind] = np.sum(self.data[1, :, nzind] * self.w, axis=1) / \
                          np.sum(self.data[2, :, nzind] * self.w, axis=1)
 
@@ -288,6 +286,7 @@ class StackedProfileContainer(object):
 
             dsum_jack = np.sum(self.data[self.dst_nom, ind][:, cind] * ww, axis=0)
             dsum_w_jack = np.sum(self.data[self.dst_denom, ind][:, cind] * ww, axis=0)
+
             self.dst_sub[cind, lab] = dsum_jack / (dsum_w_jack + Rs)
 
             osum_jack = np.sum(self.data[self.dsx_nom, ind][:, cind] * ww, axis=0)
