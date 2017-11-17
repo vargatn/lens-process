@@ -2,8 +2,9 @@
 Handles Fits -> Pandas transformations
 
 FITS tables sometimes have multidimensional columns, which are not supported for DataFrames
+Pandas DataFrames however provide many nice features, such as SQL speed database matchings.
 
-Pandas DataFrames however provide many nice features, such as SQL speed database matchings
+The approach is to flatten out multidimensional column [[COL]] into [COL_1, COL_2, ..., COL_N]
 """
 
 import numpy as np
@@ -11,6 +12,7 @@ import pandas as pd
 
 
 def flat_type(recarr):
+    """Assigns the dtypes to the flattened array"""
     newtype = []
     for dt in recarr.dtype.descr:
         if len(dt) == 3:
@@ -22,6 +24,7 @@ def flat_type(recarr):
 
 
 def flat_copy(recarr):
+    """Copies the record array into a new recarray which has only 1-D columns"""
     newtype = flat_type(recarr)
     newarr = np.zeros(len(recarr), dtype=newtype)
 
@@ -42,7 +45,7 @@ def flat_copy(recarr):
 
 
 def to_pandas(recarr):
-    """Converts potentially nested Fits Table into Pandas DataFrame"""
+    """Converts potentially nested record array (such as a Fits Table) into Pandas DataFrame"""
     newarr = flat_copy(recarr)
     res = pd.DataFrame.from_records(newarr.byteswap().newbyteorder(), columns=newarr.dtype.names)
     return res

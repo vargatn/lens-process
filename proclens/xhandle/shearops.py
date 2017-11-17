@@ -532,8 +532,8 @@ def stacked_pcov(plist):
     # assert isinstance(plist[0], StackedProfileContainer)
 
     # data vectors for covariance
-    dtvec = np.array([pc.dst for pc in plist]).flatten()
-    dxvec = np.array([pc.dsx for pc in plist]).flatten()
+    dtvec = np.concatenate([pc.dst for pc in plist])
+    dxvec = np.concatenate([pc.dsx for pc in plist])
 
     # lengths of bins
     dlen = len(dtvec)

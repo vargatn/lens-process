@@ -4,7 +4,7 @@
 
 import numpy as np
 import kmeans_radec as krd
-
+import itertools
 
 def index3d(i, j, k, jmax, kmax):
     return k  + (kmax) * j + (jmax) * kmax * i
@@ -66,6 +66,34 @@ def get_jklabel(ra, dec, centers):
     indexes = [np.where(labels == ind)[0] for ind in sub_labels]
 
     return indexes, non_indexes, labels
+
+
+def selector(pps, limits):
+    """
+    Applies selection to array based on the passed parameter limits
+
+    :param pp: numpy table of values array
+    :param limits1: list of list of corresponding limits, on list of limits for each column of pp
+    :returns: list of indices, (tuple of inputs)
+    """
+
+    parinds = np.arange(pps.shape[1], dtype=int)
+    plpairs = []
+    for pp, limit in zip(parinds, limits):
+        plpair = []
+        for i, lim in enumerate(limit[:-1]):
+            plpair.append((pp, (limit[i], limit[i + 1])))
+        plpairs.append(plpair)
+
+    sinds = []
+    for pval in itertools.product(*plpairs):
+        sval = np.zeros(len(pps), dtype=bool)
+        for (pind, limit) in pval:
+            sval += (limit[0] <= pps[:, pind]) * (pps[:, pind] < limit[1])
+        sinds.append(sval)
+
+    sinds = np.array(sinds)
+    return sinds
 
 
 def getselect(pp1, pp2, limits1, limits2):
