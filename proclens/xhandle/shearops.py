@@ -126,6 +126,10 @@ class StackedProfileContainer(object):
         self.dsx_cov = np.zeros((self.nbin, self.nbin))
         self.dsx_err = np.zeros(self.nbin)
 
+        self.dst_all = np.zeros(self.nbin)
+        self.dsx_all = np.zeros(self.nbin)
+        self.snum_all = np.zeros(self.nbin)
+
         # containers for the source number profile
         self.snum = np.zeros(self.nbin)
         self.snum0 = np.zeros(self.nbin)
@@ -170,10 +174,13 @@ class StackedProfileContainer(object):
             "dst_err": self.dst_err,
             "dsx_cov": self.dsx_cov,
             "dsx_err": self.dsx_err,
+            "dst_all": self.dst_all,
+            "dsx_all": self.dsx_all,
             "snum": self.snum,
             "snum0": self.snum0,
             "snum_err": self.snum_err,
             "snum_cov": self.snum_cov,
+            "snum_all": self.snum_all,
             "neff": self.neff,
             "hasprofile": self.hasprofile,
         }
@@ -198,6 +205,9 @@ class StackedProfileContainer(object):
         self.dst_err = np.zeros(self.nbin)
         self.dsx_cov = np.zeros((self.nbin, self.nbin))
         self.dsx_err = np.zeros(self.nbin)
+
+        self.dst_all = np.zeros(self.nbin)
+        self.dsx_all = np.zeros(self.nbin)
 
         self.hasprofile = False
 
@@ -253,6 +263,41 @@ class StackedProfileContainer(object):
         tmp_subcounts = np.dstack(tmp_subcounts)
         subcounts = np.min(tmp_subcounts, axis=2)
         return subcounts
+
+    def _allprofiles(self):
+        # TODO add this version which is just everything without subpatches
+        self.subcounts = self._get_subcounts()
+        _allcounts = np.sum(self.subcounts, axis=0).astype(bool)
+
+        ww = self.w[:, np.newaxis]
+        wsum = np.sum(ww)
+
+        Rs = np.zeros(_allcounts.sum())
+        if self.ismeta:
+            val1parr = (np.sum(self.metadata[0][self.e1_nom, :][:, _allcounts] * ww, axis=0) /
+                        np.sum(self.metadata[0][self.meta_denom, :][:, _allcounts] * ww, axis=0))
+            val1marr = (np.sum(self.metadata[1][self.e1_nom, :][:, _allcounts] * ww, axis=0) /
+                        np.sum(self.metadata[1][self.meta_denom, :][:, _allcounts] * ww, axis=0))
+            R11 = (val1parr - val1marr) / 0.02
+
+            val2parr = (np.sum(self.metadata[2][self.e2_nom, :][:, _allcounts] * ww, axis=0) /
+                        np.sum(self.metadata[2][self.meta_denom, :][:, _allcounts] * ww, axis=0))
+            val2marr = (np.sum(self.metadata[3][self.e2_nom, :][:, _allcounts] * ww, axis=0) /
+                        np.sum(self.metadata[3][self.meta_denom, :][:, _allcounts] * ww, axis=0))
+            R22 = (val2parr - val2marr) / 0.02
+            Rs = 0.5 * (R11 + R22) * np.sum(self.data[self.meta_prefac, :][:, _allcounts] * ww, axis=0)
+
+        dsum_jack = np.sum(self.data[self.dst_nom, :][:, _allcounts] * ww, axis=0)
+        dsum_w_jack = np.sum(self.data[self.dst_denom, :][:, _allcounts] * ww, axis=0)
+
+        self.dst_all[_allcounts] = dsum_jack / (dsum_w_jack + Rs)
+
+        osum_jack = np.sum(self.data[self.dsx_nom, :][:, _allcounts] * ww, axis=0)
+        osum_w_jack = np.sum(self.data[self.dsx_denom, :][:, _allcounts] * ww, axis=0)
+        self.dsx_all[_allcounts] = osum_jack / (osum_w_jack + Rs)
+
+        self.snum_all[_allcounts] = np.sum(self.data[self.snum_ind, :][:, _allcounts] * ww, axis=0) / wsum
+        self.snum_all[_allcounts] /= np.sum(self.snum_sub[_allcounts])
 
     def _subprofiles(self):
         """Calculates subprofiles for each patch"""
@@ -375,6 +420,9 @@ class StackedProfileContainer(object):
         self._profcalc()
         self._covcalc()
 
+        # calculating profile without subpatches just in case, this is not supported fully
+        # self._allprofiles()
+
         self.neff = self._get_neff()
         self.hasprofile = True
 
@@ -387,7 +435,7 @@ class StackedProfileContainer(object):
 
         :param operation: "+" or "-"
         """
-
+        tmp_dst_all = np.zeros()
         tmp_dst_sub = np.zeros(shape=(self.nbin, self.ncen))
         tmp_dsx_sub = np.zeros(shape=(self.nbin, self.ncen))
         tmp_snum_sub = np.zeros(shape=(self.nbin, self.ncen))
@@ -410,29 +458,36 @@ class StackedProfileContainer(object):
                 self.rr[r] = -1
 
             njk = len(subind)
-            if njk > 1:
-                if operation == "-":
+            if operation == "-":
+                tmp_dst_all[r] = self.dst_all[r] - other.dst_all[r]
+                if njk > 1:
                     tmp_dst_sub[r, subind] = self.dst_sub[r, subind] - \
                                              other.dst_sub[r, subind]
                     tmp_dsx_sub[r, subind] = self.dsx_sub[r, subind] - \
                                              other.dsx_sub[r, subind]
                     tmp_snum_sub[r, subind] = self.snum_sub[r, subind] - \
                                              other.snum_sub[r, subind]
-                elif operation == "+":
+            elif operation == "+":
+                tmp_dst_all[r] = self.dst_all[r] + other.dst_all[r]
+                if njk > 1:
                     tmp_dst_sub[r, subind] = self.dst_sub[r, subind] + \
                                              other.dst_sub[r, subind]
                     tmp_dsx_sub[r, subind] = self.dsx_sub[r, subind] + \
                                              other.dsx_sub[r, subind]
                     tmp_snum_sub[r, subind] = self.snum_sub[r, subind] + \
                                              other.snum_sub[r, subind]
-                elif operation == "*":
+            elif operation == "*":
+                tmp_dst_all[r] = self.dst_all[r] * other.dst_all[r]
+                if njk > 1:
                     tmp_dst_sub[r, subind] = self.dst_sub[r, subind] * \
                                              other.dst_sub[r, subind]
                     tmp_dsx_sub[r, subind] = self.dsx_sub[r, subind] * \
                                              other.dsx_sub[r, subind]
                     tmp_snum_sub[r, subind] = self.snum_sub[r, subind] * \
                                              other.snum_sub[r, subind]
-                elif operation == "/":
+            elif operation == "/":
+                tmp_dst_all[r] = self.dst_all[r] / other.dst_all[r]
+                if njk > 1:
                     tmp_dst_sub[r, subind] = self.dst_sub[r, subind] / \
                                              other.dst_sub[r, subind]
                     tmp_dsx_sub[r, subind] = self.dsx_sub[r, subind] / \
@@ -440,8 +495,8 @@ class StackedProfileContainer(object):
                     tmp_snum_sub[r, subind] = self.snum_sub[r, subind] / \
                                              other.snum_sub[r, subind]
 
-                else:
-                    raise ValueError("Operation not supported, use ('+', '-', '*', '/')")
+            else:
+                raise ValueError("Operation not supported, use ('+', '-', '*', '/')")
 
         # assigning updated containers
         self.sub_labels = tmp_sub_labels
@@ -528,7 +583,7 @@ def stacked_pcov(plist):
     :return: supercov_t, supercov_x matrices
     """
     # checking that input is of correct format
-    assert np.iterable(plist)
+    # assert np.iterable(plist)
     # assert isinstance(plist[0], StackedProfileContainer)
 
     # data vectors for covariance
